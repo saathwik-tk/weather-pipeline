@@ -1,0 +1,36 @@
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Point",
+    "coordinates": [72.878, 19.076, 97.15]
+  },
+  "properties": {
+    "parameter": {
+      "ALLSKY_SFC_SW_DWN": {"2026070100": 0.85, "2026070101": 0.9},
+      "ALLSKY_SFC_SW_DNI": {"2026070100": 0.0, "2026070101": 0.0},
+      "ALLSKY_SFC_SW_DIFF": {"2026070100": 1.16, "2026070101": 1.22},
+      "CLRSKY_SFC_SW_DWN": {"2026070100": 3.95, "2026070101": 5.2},
+      "CLRSKY_SFC_SW_DNI": {"2026070100": 2.18, "2026070101": 3.0},
+      "CLRSKY_SFC_SW_DIFF": {"2026070100": 3.95, "2026070101": 4.7}
+    }
+  },
+  "header": {
+    "title": "NASA/POWER Source Native Resolution Hourly Data",
+    "api": {"version": "v2.10.3", "name": "POWER Hourly API"},
+    "sources": ["SYN1DEG"],
+    "fill_value": -999.0,
+    "time_standard": "UTC",
+    "start": "20260701",
+    "end": "20260701"
+  },
+  "messages": [],
+  "parameters": {
+    "ALLSKY_SFC_SW_DWN": {"units": "Wh/m^2", "longname": "All Sky Surface Shortwave Downward Irradiance"},
+    "ALLSKY_SFC_SW_DNI": {"units": "Wh/m^2", "longname": "All Sky Surface Shortwave Downward Direct Normal Irradiance"},
+    "ALLSKY_SFC_SW_DIFF": {"units": "Wh/m^2", "longname": "All Sky Surface Shortwave Diffuse Irradiance"},
+    "CLRSKY_SFC_SW_DWN": {"units": "Wh/m^2", "longname": "Clear Sky Surface Shortwave Downward Irradiance"},
+    "CLRSKY_SFC_SW_DNI": {"units": "Wh/m^2", "longname": "Clear Sky Surface Shortwave Downward Direct Normal Irradiance"},
+    "CLRSKY_SFC_SW_DIFF": {"units": "Wh/m^2", "longname": "Clear Sky Surface Shortwave Diffuse Irradiance"}
+  },
+  "times": {"data": 0.05, "process": 0.02}
+}

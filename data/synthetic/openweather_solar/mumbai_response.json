@@ -1,0 +1,25 @@
+{
+  "lat": 19.076,
+  "lon": 72.8777,
+  "date": "2026-07-01",
+  "interval": "1h",
+  "tz": "+05:30",
+  "sunrise": "2026-07-01T06:05:00",
+  "sunset": "2026-07-01T19:18:00",
+  "intervals": [
+    {
+      "start": "10:00",
+      "end": "10:59",
+      "avg_irradiance": {"clear_sky": {"ghi": 610.0, "dni": 720.0, "dhi": 165.0}, "cloudy_sky": {"ghi": 420.0, "dni": 480.0, "dhi": 135.0}},
+      "max_irradiance": {"clear_sky": {"ghi": 690.0, "dni": 810.0, "dhi": 190.0}, "cloudy_sky": {"ghi": 510.0, "dni": 590.0, "dhi": 155.0}},
+      "irradiation": {"clear_sky": {"ghi": 610.0, "dni": 720.0, "dhi": 165.0}, "cloudy_sky": {"ghi": 420.0, "dni": 480.0, "dhi": 135.0}}
+    },
+    {
+      "start": "11:00",
+      "end": "11:59",
+      "avg_irradiance": {"clear_sky": {"ghi": 670.0, "dni": 790.0, "dhi": 180.0}, "cloudy_sky": {"ghi": 465.0, "dni": 515.0, "dhi": 150.0}},
+      "max_irradiance": {"clear_sky": {"ghi": 745.0, "dni": 880.0, "dhi": 205.0}, "cloudy_sky": {"ghi": 550.0, "dni": 625.0, "dhi": 172.0}},
+      "irradiation": {"clear_sky": {"ghi": 670.0, "dni": 790.0, "dhi": 180.0}, "cloudy_sky": {"ghi": 465.0, "dni": 515.0, "dhi": 150.0}}
+    }
+  ]
+}
