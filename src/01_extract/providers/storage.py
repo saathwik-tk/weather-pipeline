@@ -10,8 +10,14 @@ from typing import Any
 import pandas as pd
 
 
-def upsert_solar_rows(project_root: Path, provider: str, rows: list[dict[str, Any]]) -> tuple[int, int]:
-    """Write provider rows by UTC date; return counts of new and replaced keys."""
+def upsert_partitioned_rows(
+    project_root: Path,
+    provider: str,
+    dataset_name: str,
+    filename: str,
+    rows: list[dict[str, Any]],
+) -> tuple[int, int]:
+    """Write provider rows by UTC date into a dataset-specific partition."""
     if not rows:
         return 0, 0
 
@@ -21,14 +27,7 @@ def upsert_solar_rows(project_root: Path, provider: str, rows: list[dict[str, An
     replaced = 0
     for day, daily_rows in frame.groupby("date", sort=True):
         year, month, _ = day.split("-")
-        output_path = (
-            project_root
-            / "data"
-            / provider
-            / f"year={year}"
-            / f"month={month}"
-            / "hourly_solar_radiation.csv"
-        )
+        output_path = project_root / "data" / provider / dataset_name / f"year={year}" / f"month={month}" / f"{filename}.csv"
         output_path.parent.mkdir(parents=True, exist_ok=True)
         daily_rows = daily_rows.drop(columns="date")
         key_columns = ["city", "timestamp_utc"]
@@ -60,3 +59,15 @@ def upsert_solar_rows(project_root: Path, provider: str, rows: list[dict[str, An
                 os.unlink(temporary_path)
 
     return inserted, replaced
+
+
+def upsert_solar_rows(project_root: Path, provider: str, rows: list[dict[str, Any]]) -> tuple[int, int]:
+    """Write rows to the solar partition for a provider."""
+    return upsert_partitioned_rows(project_root, provider, "solar", "hourly_solar_radiation", rows)
+
+
+def upsert_weather_rows(project_root: Path, provider: str, rows: list[dict[str, Any]], *, forecast: bool = False) -> tuple[int, int]:
+    """Write rows to the atmospheric weather partition for a provider."""
+    dataset_name = "weather_forecast" if forecast else "weather"
+    filename = "hourly_weather_forecast" if forecast else "hourly_weather"
+    return upsert_partitioned_rows(project_root, provider, dataset_name, filename, rows)

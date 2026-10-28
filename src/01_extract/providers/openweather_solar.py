@@ -20,18 +20,18 @@ API_URL = "https://api.openweathermap.org/energy/2.0/solar/interval_data"
 LOCAL_OFFSET = timezone(timedelta(hours=5, minutes=30))
 
 
-def _get_json(params: dict[str, str]) -> dict[str, object]:
+def _get_json(params: dict[str, str], api_url: str = API_URL) -> dict[str, object]:
     request = Request(
-        f"{API_URL}?{urlencode(params)}",
-        headers={"User-Agent": "weather-pipeline/1.0 (OpenWeather Solar Irradiance API)"},
+        f"{api_url}?{urlencode(params)}",
+        headers={"User-Agent": "weather-pipeline/1.0 (OpenWeather API)"},
     )
     try:
         with urlopen(request, timeout=60) as response:
             payload = json.loads(response.read().decode("utf-8"))
     except (HTTPError, URLError, TimeoutError) as error:
-        raise RuntimeError(f"OpenWeather Solar Irradiance request failed: {error}") from error
-    if not isinstance(payload, dict) or "intervals" not in payload:
-        raise ValueError("Unexpected OpenWeather Solar Irradiance response")
+        raise RuntimeError(f"OpenWeather request failed: {error}") from error
+    if not isinstance(payload, dict):
+        raise ValueError("Unexpected OpenWeather response")
     return payload
 
 
@@ -65,8 +65,11 @@ def collect_current(project_root: Path) -> tuple[int, int]:
                 "interval": "1h",
                 "tz": "+05:30",
                 "appid": api_key,
-            }
+            },
+            API_URL,
         )
+        if "intervals" not in payload:
+            raise ValueError("Unexpected OpenWeather Solar Irradiance response")
         eligible = []
         for interval in payload["intervals"]:
             if not isinstance(interval, dict):
@@ -103,5 +106,111 @@ def collect_current(project_root: Path) -> tuple[int, int]:
         rows.append(row)
 
     inserted, replaced = upsert_solar_rows(project_root, "openweather_solar", rows)
-    LOGGER.info("OpenWeather processed %d rows (%d new, %d replaced)", len(rows), inserted, replaced)
+    LOGGER.info("OpenWeather solar processed %d rows (%d new, %d replaced)", len(rows), inserted, replaced)
+    return inserted, replaced
+
+
+def collect_current_weather(project_root: Path) -> tuple[int, int]:
+    """Fetch the most recent atmospheric weather reading for all locations."""
+    api_key = os.environ.get("OPENWEATHER_API_KEY")
+    if not api_key:
+        raise RuntimeError("Set OPENWEATHER_API_KEY to use the OpenWeather weather API")
+
+    rows: list[dict[str, object]] = []
+    retrieved_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    for location in LOCATIONS:
+        payload = _get_json(
+            {
+                "lat": str(location.latitude),
+                "lon": str(location.longitude),
+                "appid": api_key,
+                "units": "metric",
+            },
+            "https://api.openweathermap.org/data/2.5/weather",
+        )
+        if not isinstance(payload, dict):
+            continue
+        timestamp = datetime.fromtimestamp(int(payload.get("dt", 0)), tz=timezone.utc)
+        row: dict[str, object] = {
+            "timestamp_utc": timestamp.isoformat(timespec="minutes"),
+            "city": location.city,
+            "state": location.state,
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            "source": "OpenWeather Current Weather API",
+            "data_type": "live_weather",
+            "retrieved_at_utc": retrieved_at,
+            "temperature_c": payload.get("main", {}).get("temp"),
+            "feels_like_c": payload.get("main", {}).get("feels_like"),
+            "humidity_pct": payload.get("main", {}).get("humidity"),
+            "pressure_hpa": payload.get("main", {}).get("pressure"),
+            "wind_speed_ms": payload.get("wind", {}).get("speed"),
+            "wind_direction_deg": payload.get("wind", {}).get("deg"),
+            "cloud_cover_pct": payload.get("clouds", {}).get("all"),
+            "weather_main": (payload.get("weather") or [{}])[0].get("main"),
+            "weather_description": (payload.get("weather") or [{}])[0].get("description"),
+            "weather_code": (payload.get("weather") or [{}])[0].get("id"),
+        }
+        rows.append(row)
+
+    from storage import upsert_weather_rows
+
+    inserted, replaced = upsert_weather_rows(project_root, "openweather_solar", rows)
+    LOGGER.info("OpenWeather weather processed %d rows (%d new, %d replaced)", len(rows), inserted, replaced)
+    return inserted, replaced
+
+
+def collect_forecast_weather(project_root: Path, forecast_hours: int = 48) -> tuple[int, int]:
+    """Fetch hourly weather forecast rows for all configured locations."""
+    api_key = os.environ.get("OPENWEATHER_API_KEY")
+    if not api_key:
+        raise RuntimeError("Set OPENWEATHER_API_KEY to use the OpenWeather weather forecast API")
+    if forecast_hours < 1:
+        raise ValueError("forecast_hours must be positive")
+
+    rows: list[dict[str, object]] = []
+    retrieved_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    for location in LOCATIONS:
+        payload = _get_json(
+            {
+                "lat": str(location.latitude),
+                "lon": str(location.longitude),
+                "appid": api_key,
+                "units": "metric",
+                "cnt": str(min(max(forecast_hours, 1), 40)),
+            },
+            "https://api.openweathermap.org/data/2.5/forecast",
+        )
+        if not isinstance(payload, dict):
+            continue
+        for item in payload.get("list", []):
+            if not isinstance(item, dict):
+                continue
+            timestamp = datetime.fromtimestamp(int(item.get("dt", 0)), tz=timezone.utc)
+            row: dict[str, object] = {
+                "timestamp_utc": timestamp.isoformat(timespec="minutes"),
+                "city": location.city,
+                "state": location.state,
+                "latitude": location.latitude,
+                "longitude": location.longitude,
+                "source": "OpenWeather Forecast API",
+                "data_type": "weather_forecast",
+                "retrieved_at_utc": retrieved_at,
+                "temperature_c": item.get("main", {}).get("temp"),
+                "feels_like_c": item.get("main", {}).get("feels_like"),
+                "humidity_pct": item.get("main", {}).get("humidity"),
+                "pressure_hpa": item.get("main", {}).get("pressure"),
+                "wind_speed_ms": item.get("wind", {}).get("speed"),
+                "wind_direction_deg": item.get("wind", {}).get("deg"),
+                "cloud_cover_pct": item.get("clouds", {}).get("all"),
+                "weather_main": (item.get("weather") or [{}])[0].get("main"),
+                "weather_description": (item.get("weather") or [{}])[0].get("description"),
+                "weather_code": (item.get("weather") or [{}])[0].get("id"),
+            }
+            rows.append(row)
+
+    from storage import upsert_weather_rows
+
+    inserted, replaced = upsert_weather_rows(project_root, "openweather_solar", rows, forecast=True)
+    LOGGER.info("OpenWeather forecast processed %d rows (%d new, %d replaced)", len(rows), inserted, replaced)
     return inserted, replaced
