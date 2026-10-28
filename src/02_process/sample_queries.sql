@@ -26,3 +26,8 @@ SELECT state_code, region_id, valid_time_utc, precipitation_mm, precipitation_24
 FROM rain_table
 WHERE precipitation_24h_mm >= 100
 ORDER BY precipitation_24h_mm DESC;
+
+-- Missing source values, absent hours, and excluded conflicting duplicates.
+SELECT state_code, region_id, valid_time_utc, variable, gap_reason, gap_duration_hours
+FROM gap_log
+ORDER BY valid_time_utc, state_code, region_id, variable;

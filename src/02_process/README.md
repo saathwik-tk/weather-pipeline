@@ -37,16 +37,18 @@ No data is fetched from the network and no source files are modified.
 
 The run creates Parquet datasets under `output/`:
 
-* `regions/` — deterministic city regions and 0.25° cells containing source
-  city coordinates.
+* `regions/` and `region_coordinates/` — deterministic city regions, observed
+  0.25° grid cells, city-to-grid coordinate mapping, and centroid distances.
+  `resolve_regions(points_df, regions_df, max_distance_km=25)` resolves a point
+  by bbox first and then nearest centroid within the configured radius.
 * `weather_hourly/` — canonical hourly weather, retaining source rows and
   derived fields.
 * `solar_table/`, `wind_table/`, `rain_table/`, `demand_weather_table/` — hourly
   resource and demand proxies.
 * `factor_contribution_table/` and `state_factor_contribution_table/` —
   normalized rule-based contributions and equal-city rollups.
-* `data_quality_report/` and `metadata_catalog/` — availability metrics,
-  mappings, units, and limitations.
+* `data_quality_report/`, `gap_log/`, and `metadata_catalog/` — availability,
+  missing-hour/variable gaps, mappings, formulas, units, lineage, and limits.
 * `sample_queries.sql`, `pipeline_architecture.md`, and `limitations.md` —
   companion documentation.
 
@@ -56,23 +58,33 @@ represent complete state coverage.
 
 ## Mapping and transformation policy
 
-Source headers are normalized to snake_case. `main.py` contains the explicit
-`ALIASES` map; add source-specific aliases there when the Kaggle schema is
-known. Common Open-Meteo archive field names are recognized. Fields absent from
-the source remain NULL. Temperature and radiation units are not guessed from
-numeric values; verify them from the source metadata before relying on those
-outputs. Pressure values above 2000 are treated as Pa and converted to hPa.
-Timestamps are treated as UTC by default; the source timezone must be confirmed
-from dataset metadata. `valid_time_ist` is UTC plus 05:30.
+Source headers are normalized to snake_case. `ALIASES` includes the delivered
+CSV fields (`temperature_C`, `humidity_pct`, `pressure_hPa`, `dew_point_C`,
+`solar_radiation_Wm2`, `wind_speed_ms`, `cloud_cover_pct`, `precip_mm`, and
+`wind_direction_deg`) and common Open-Meteo fields. Units with explicit source
+suffixes are mapped directly; pressure above 2000 is treated as Pa. `ssrd` is
+converted from accumulated J/m² by hourly differencing and `tp` is differenced
+as accumulated metres and converted to millimetres. No generic numeric-value
+unit guessing is used.
 
-Documented derivations include dewpoint/RH via Magnus, wind components from
-meteorological direction, humidity, air density, 100 m wind via the stated
-power law, generic turbine curve, PV cell temperature and derating, rolling
-rainfall, degree hours, and empirical percentile normalization. Wind estimates
-are tagged. DNI/DHI, clear-sky GHI, heat index, wind chill, soil moisture,
-population weights, elevation, and other unsupported measurements are not
-invented. Some requested scores therefore remain NULL or are explicitly
-rainfall-only / rule-based proxies. See [limitations.md](limitations.md).
+The transformations implement the prompt's Magnus dewpoint/RH and specific
+humidity equations; meteorological wind components; 100 m power-law wind
+estimate; air density; Rothfusz heat index and conditional wind chill; PV NOCT,
+temperature derating, capacity, ramps and variability; generic wind power
+curve, density adjustment, ramps and cut-in/rated/cut-out flags; time-based
+rainfall windows, dry/wet streaks, calendar monsoon, normalized flood/drought
+and rainfall-only hydro proxies; cooling/heating degree hours, discomfort,
+weather stress, demand index and peak-risk flag; and local seasonal normalized
+factor contributions with equal-city state rollups. Each formula and its
+parameters are also written to `metadata_catalog/`.
+
+Unsupported inputs remain NULL: clear-sky GHI/solar elevation, DNI/DHI when not
+provided, elevation, population/activity, soil moisture, turbulence, and actual
+electricity demand/generation. Estimated 100 m wind is tagged with its method.
+GHI is not plane-of-array irradiance; output indexes are proxies, not forecasts
+or causal coefficients. Source timezone defaults to UTC and is recorded; verify
+that convention against the source before production. `valid_time_ist` is UTC
+plus 05:30. See [limitations.md](limitations.md).
 
 The full schema snapshot includes column type, null and unique counts, sample
 values, min/max, and a deliberately tentative unit hint. Use it together with

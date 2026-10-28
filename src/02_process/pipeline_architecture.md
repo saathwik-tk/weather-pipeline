@@ -13,10 +13,10 @@ Header normalization -> state/time filtering -> mappings and documented derivati
 Duplicate/conflict and range-quality flags -> cleaned preview + assumptions report
               |
               v
-regions | weather_hourly | solar | wind | rain | demand proxies
+regions + region_coordinates | weather_hourly | solar | wind | rain | demand proxies
               |
               v
-factor contributions | state composites | quality + metadata catalog
+factor contributions | state composites | gap log | quality + metadata catalog
               |
               v
 Partitioned Parquet: state_code/year/month/region_id
