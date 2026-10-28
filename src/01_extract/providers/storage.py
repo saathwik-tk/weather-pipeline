@@ -16,6 +16,8 @@ def upsert_partitioned_rows(
     dataset_name: str,
     filename: str,
     rows: list[dict[str, Any]],
+    *,
+    key_columns: list[str] | None = None,
 ) -> tuple[int, int]:
     """Write provider rows by UTC date into a dataset-specific partition."""
     if not rows:
@@ -30,7 +32,7 @@ def upsert_partitioned_rows(
         output_path = project_root / "data" / provider / dataset_name / f"year={year}" / f"month={month}" / f"{filename}.csv"
         output_path.parent.mkdir(parents=True, exist_ok=True)
         daily_rows = daily_rows.drop(columns="date")
-        key_columns = ["city", "timestamp_utc"]
+        row_key_columns = key_columns or ["city", "timestamp_utc"]
 
         if output_path.exists() and output_path.stat().st_size:
             existing = pd.read_csv(output_path)
@@ -39,7 +41,7 @@ def upsert_partitioned_rows(
             existing = pd.DataFrame(columns=daily_rows.columns)
             combined = daily_rows.copy()
 
-        combined = combined.drop_duplicates(subset=key_columns, keep="last")
+        combined = combined.drop_duplicates(subset=row_key_columns, keep="last")
         combined["_sort_timestamp"] = pd.to_datetime(combined["timestamp_utc"], utc=True)
         combined = combined.sort_values(["_sort_timestamp", "city"]).drop(columns="_sort_timestamp")
         new_rows = max(0, len(combined) - len(existing))
@@ -70,4 +72,19 @@ def upsert_weather_rows(project_root: Path, provider: str, rows: list[dict[str, 
     """Write rows to the atmospheric weather partition for a provider."""
     dataset_name = "weather_forecast" if forecast else "weather"
     filename = "hourly_weather_forecast" if forecast else "hourly_weather"
+    if forecast:
+        # Keep each fetched forecast vintage so Gold can score it against later
+        # observations. The valid time alone is not a unique forecast key.
+        rows = [
+            {**row, "forecast_issued_at_utc": row.get("forecast_issued_at_utc") or row.get("retrieved_at_utc")}
+            for row in rows
+        ]
+        return upsert_partitioned_rows(
+            project_root,
+            provider,
+            dataset_name,
+            filename,
+            rows,
+            key_columns=["city", "timestamp_utc", "forecast_issued_at_utc"],
+        )
     return upsert_partitioned_rows(project_root, provider, dataset_name, filename, rows)
