@@ -20,7 +20,7 @@ The system is designed to gather weather data for any coordinates or region and 
 
 - [Pipeline architecture](docs/design.svg)
 
-> Note: this section was generated using a tool.
+> Note: this diagram was generated using excalidraw. (manual design of thoughts, no AI used here)
 
 ## Design thinking
 
