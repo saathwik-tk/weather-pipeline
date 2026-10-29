@@ -38,3 +38,17 @@ The system is designed to gather weather data for any coordinates or region and 
 
 - reporting (analysis part) directly from the pipeline results due to memory limitations in the system
 - implementation of third party data ingestion in the pipeline
+
+
+### Addressing critical problems from the problem statement
+
+- get the weather at a place that is not a district, such as a solar park or a city;
+  - data is collected from satellite weather monitoring providers, so data is available for all coordinates
+  - a remote solar park can be tracked with above data (using coordinates to resolve region or vice versa)
+
+- know where each value came from and how far to trust it;
+  - each point of data is tagged with its sources and a realistic confidence reference table to tag a confidence score to ensure how far to trust it
+
+- compare what was forecast with what actually happened;
+  - providers has both forecasting data as well as realtime live data (some minimal delay can be expected)
+  - which can be used to plot graphs and analyse how far forecast is able to meet realistic numbers
